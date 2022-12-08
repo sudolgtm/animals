@@ -1,0 +1,15 @@
+{
+  "name": "animals",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Here is hopefully a simple and realistic programming exercise in the spirit of ETL (extract, transform, load) across an HTTP API.",
+  "main": "animals.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  }
+}
