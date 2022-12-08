@@ -1,4 +1,5 @@
 "use strict";
+
 import EventEmitter from 'events';
 import fetch from 'node-fetch';
 
@@ -70,6 +71,7 @@ let queue1 = [];
 let queue2 = [];
 let page = 1;
 let totalPages = 1;
+let entriesCount = 0;
 let fetchComplete = false;
 
 const myEmitter = new EventEmitter();
@@ -79,16 +81,21 @@ myEmitter.on('newEntryQueue1', () => {
         console.log('newEntryQueue1');
         if (queue1.length > 0) {
             let animal = queue1.shift();
-            queue2.push(await getAnimal(animal.id));
-            myEmitter.emit('newEntryQueue2');
+            await queue2.push(await getAnimal(animal.id));
+            if (queue2.length > 100 || (fetchComplete && queue2.length === entriesCount)) myEmitter.emit('flushQueue2');
         }
     })
 });
 
-myEmitter.on('newEntryQueue2', async () => {
-    console.log('newEntryQueue2');
-    if ( queue2.length > 0 && (queue2.length >= 100 || fetchComplete)) {
-        await receiveAnimals([queue2.shift()]);
+myEmitter.on('flushQueue2', async () => {
+    console.log('flushQueue2');
+    let len = queue2.length;
+    if (len > 0) {
+        len = len % 100;
+        if (len === 0) len = 100;
+        let batch = queue2.slice(0,len);
+        queue2 = queue2.slice(len);
+        receiveAnimals(batch);
     }
 });
 
@@ -97,9 +104,9 @@ while (page <= totalPages) {
     //if (batch.total_pages !== totalPages) totalPages = batch.total_pages;
     batch.items.map(animal => {
         queue1.push(animal);
+        entriesCount++;
         myEmitter.emit('newEntryQueue1');
     })
     page++;
 }
-
 fetchComplete = true;
