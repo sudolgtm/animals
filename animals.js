@@ -19,7 +19,7 @@ const checkStatus = response => {
 	}
 }
 
-// Fetch animals
+// Fetch & transform animal
 let getAnimal = async (id) => {
     const response = await fetch(`http://localhost:3123/animals/v1/animals/${id}`);
     try {
@@ -32,6 +32,7 @@ let getAnimal = async (id) => {
     }
 }
 
+// Fetch animals
 let getAnimals = async (page) => {
     const params = new URLSearchParams();
     params.append('page', page);
@@ -70,7 +71,7 @@ let receiveAnimals = async (animals) => {
 let queue1 = [];
 let queue2 = [];
 let page = 1;
-let totalPages = 0;
+let totalPages = 1;
 let entriesCount = 0;
 let entriesComplete = 0;
 let fetchComplete = false;
@@ -98,7 +99,7 @@ myEmitter.on('newEntryQueue2', () => {
 });
 
 myEmitter.on('flushQueue2', (count) => {
-    console.log('flushQueue2: ', count, ' entries');
+    console.log('flushQueue2:', count, 'entries');
     let batch = [];
     while (count > 0) {
         batch.push(queue2.shift());
@@ -110,11 +111,13 @@ myEmitter.on('flushQueue2', (count) => {
 while (page <= totalPages) {
     let batch = await getAnimals(page);
     if (batch.total_pages !== totalPages) totalPages = batch.total_pages;
+
     batch.items.map(animal => {
         queue1.push(animal);
         entriesCount++;
         myEmitter.emit('newEntryQueue1');
     })
+
     page++;
 }
 
