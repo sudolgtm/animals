@@ -62,46 +62,54 @@ let receiveAnimals = async (animals) => {
         console.log(result.message);
     } catch (error) {
         console.error(error);
-        return await receiveAnimals(animals);
+        receiveAnimals(animals);
     }
 }
 
-// Execute
+// Execute Asynchronously
 let queue1 = [];
 let queue2 = [];
 let page = 1;
-let totalPages = 1;
+let totalPages = 0;
 let entriesCount = 0;
+let entriesComplete = 0;
 let fetchComplete = false;
 
 const myEmitter = new EventEmitter();
 
 myEmitter.on('newEntryQueue1', () => {
     setImmediate(async () => {
-        console.log('newEntryQueue1');
         if (queue1.length > 0) {
             let animal = queue1.shift();
             await queue2.push(await getAnimal(animal.id));
-            if (queue2.length > 100 || (fetchComplete && queue2.length === entriesCount)) myEmitter.emit('flushQueue2');
+            entriesComplete++;
+            myEmitter.emit('newEntryQueue2');
         }
     })
 });
 
-myEmitter.on('flushQueue2', async () => {
-    console.log('flushQueue2');
+myEmitter.on('newEntryQueue2', () => {
     let len = queue2.length;
-    if (len > 0) {
-        len = len % 100;
-        if (len === 0) len = 100;
-        let batch = queue2.slice(0,len);
-        queue2 = queue2.slice(len);
-        receiveAnimals(batch);
+    if (len >= 100) {
+        myEmitter.emit('flushQueue2', 100);
+    } else if (fetchComplete && entriesComplete === entriesCount && len > 0) {
+        myEmitter.emit('flushQueue2', len);
     }
+});
+
+myEmitter.on('flushQueue2', (count) => {
+    console.log('flushQueue2: ', count, ' entries');
+    let batch = [];
+    while (count > 0) {
+        batch.push(queue2.shift());
+        count--;
+    }
+    receiveAnimals(batch);
 });
 
 while (page <= totalPages) {
     let batch = await getAnimals(page);
-    //if (batch.total_pages !== totalPages) totalPages = batch.total_pages;
+    if (batch.total_pages !== totalPages) totalPages = batch.total_pages;
     batch.items.map(animal => {
         queue1.push(animal);
         entriesCount++;
@@ -109,4 +117,5 @@ while (page <= totalPages) {
     })
     page++;
 }
+
 fetchComplete = true;
