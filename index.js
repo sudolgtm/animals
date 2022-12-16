@@ -19,37 +19,34 @@ const checkStatus = response => {
 	}
 }
 
-// Fetch & transform animal
-let getAnimal = async (id) => {
-    const response = await fetch(`http://localhost:3123/animals/v1/animals/${id}`);
+const getRequest = async (url) => {
     try {
+        const response = await fetch(url);
         checkStatus(response);
         let result = await response.json();
-        return transform(result);
+        return result;
     } catch (error) {
         console.error(error);
-        return await getAnimal(id);
+        return await getRequest(url);
     }
+}
+
+// Fetch & transform animal
+let getAnimal = async (id) => {
+    const url = `http://localhost:3123/animals/v1/animals/${id}`;
+    return transform(await getRequest(url));
 }
 
 // Fetch animals
 let getAnimals = async (page) => {
     const params = new URLSearchParams();
     params.append('page', page);
-
-    const response = await fetch(`http://localhost:3123/animals/v1/animals?${params.toString()}`);
-    try {
-        checkStatus(response);
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error(error);
-        return await getAnimals(page);
-    }
+    const url = `http://localhost:3123/animals/v1/animals?${params.toString()}`;
+    return await getRequest(url);
 }
 
 // `POST` batches of Animals `/animals/v1/home`, up to 100 at a time
-let receiveAnimals = async (animals) => {
+let sendAnimals = async (animals) => {
     const options = {
         method: 'post',
         body: JSON.stringify(animals),
@@ -63,11 +60,11 @@ let receiveAnimals = async (animals) => {
         console.log(result.message);
     } catch (error) {
         console.error(error);
-        receiveAnimals(animals);
+        sendAnimals(animals);
     }
 }
 
-// Execute Asynchronously
+// Initialize variables
 let queue1 = [];
 let queue2 = [];
 let page = 1;
@@ -76,6 +73,7 @@ let entriesCount = 0;
 let entriesComplete = 0;
 let fetchComplete = false;
 
+// Create event emitters
 const myEmitter = new EventEmitter();
 
 myEmitter.on('newEntryQueue1', () => {
@@ -105,9 +103,10 @@ myEmitter.on('flushQueue2', (count) => {
         batch.push(queue2.shift());
         count--;
     }
-    receiveAnimals(batch);
+    sendAnimals(batch);
 });
 
+// Exectute
 while (page <= totalPages) {
     let batch = await getAnimals(page);
     if (batch.total_pages !== totalPages) totalPages = batch.total_pages;
