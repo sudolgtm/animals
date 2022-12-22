@@ -5,7 +5,7 @@
   "description": "Here is hopefully a simple and realistic programming exercise in the spirit of ETL (extract, transform, load) across an HTTP API.",
   "main": "animals.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
