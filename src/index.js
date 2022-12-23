@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import fetch from 'node-fetch';
+import {withRetry, getRequest, postRequest} from './requestAPI.js'
 
 // Transform
 const transform = (animal) => {
@@ -8,30 +8,10 @@ const transform = (animal) => {
   return animal;
 };
 
-const checkStatus = (response) => {
-  if (response.ok) {
-    // response.status >= 200 && response.status < 300
-    return response;
-  }
-  throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
-};
-
-const getRequest = async (url) => {
-  try {
-    const response = await fetch(url);
-    checkStatus(response);
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error(error);
-    return await getRequest(url);
-  }
-};
-
 // Fetch & transform animal
 const getAnimal = async (id) => {
   const url = `http://localhost:3123/animals/v1/animals/${id}`;
-  return transform(await getRequest(url));
+  return transform(await withRetry(getRequest, [url]));
 };
 
 // Fetch animals
@@ -39,26 +19,13 @@ const getAnimals = async (page) => {
   const params = new URLSearchParams();
   params.append('page', page);
   const url = `http://localhost:3123/animals/v1/animals?${params.toString()}`;
-  return await getRequest(url);
+  return await withRetry(getRequest, [url]);
 };
 
 // `POST` batches of Animals `/animals/v1/home`, up to 100 at a time
 const sendAnimals = async (animals) => {
-  const options = {
-    method: 'post',
-    body: JSON.stringify(animals),
-    headers: { 'Content-Type': 'application/json' },
-  };
-
-  const response = await fetch('http://localhost:3123/animals/v1/home', options);
-  try {
-    checkStatus(response);
-    const result = await response.json();
-    console.log(result.message);
-  } catch (error) {
-    console.error(error);
-    sendAnimals(animals);
-  }
+  const url = 'http://localhost:3123/animals/v1/home';
+  withRetry(postRequest, [url, animals]);
 };
 
 // Initialize variables
